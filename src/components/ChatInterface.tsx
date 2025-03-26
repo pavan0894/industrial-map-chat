@@ -305,15 +305,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const response = `I found ${filteredProperties.length} properties that are ${conditionsText}:`;
       addBotResponse(response);
       
-      const amenitiesForMap: NearbyLocation[] = [];
-      conditions.forEach(condition => {
-        const amenities = nearbyLocations.filter(loc => loc.type === condition.type);
-        amenitiesForMap.push(...amenities);
-      });
+      // Instead of just providing the types, pass the actual amenities to display
+      const uniqueTypes = [...new Set(conditions.map(c => c.type))];
+      const amenitiesForMap = nearbyLocations.filter(loc => uniqueTypes.includes(loc.type));
       
       const propertiesToShow = filteredProperties.map(item => item.property);
       
-      onFilterProperties(propertiesToShow, amenitiesForMap.map(a => ({ type: a.type })));
+      // Pass the full amenities array to display, not just the types
+      onFilterProperties(propertiesToShow, amenitiesForMap);
       
       if (filteredProperties.length > 0) {
         handlePropertySelection(filteredProperties[0].property);
@@ -369,7 +368,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       addBotResponse(response);
       
-      onFilterProperties([property], amenityType);
+      // Pass the actual amenities to display on the map, not just the type
+      const amenitiesForMap = nearbyLocations.filter(loc => loc.type === amenityType);
+      onFilterProperties([property], amenitiesForMap);
     } else {
       addBotResponse(`I couldn't find any ${amenityType.toUpperCase()} locations near ${property.name}.`);
     }
@@ -413,7 +414,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       addBotResponse(response);
       
       const filteredProperties = propertiesWithDistance.map(item => item.property);
-      onFilterProperties(filteredProperties, amenityType);
+      // Pass the actual amenities to display, not just the type
+      const amenitiesForMap = nearbyLocations.filter(loc => loc.type === amenityType);
+      onFilterProperties(filteredProperties, amenitiesForMap);
       
       handlePropertySelection(propertiesWithDistance[0].property);
       
@@ -479,7 +482,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       const propertiesToShow = propertiesWithinDistance.map(item => item.property);
       
-      onFilterProperties(propertiesToShow, amenityType);
+      // Pass the actual amenities to display, not just the type
+      const amenitiesForMap = nearbyLocations.filter(loc => loc.type === amenityType);
+      onFilterProperties(propertiesToShow, amenitiesForMap);
       
       if (propertiesWithinDistance.length > 0) {
         handlePropertySelection(propertiesWithinDistance[0].property);

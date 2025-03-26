@@ -17,12 +17,18 @@ const Index = () => {
   
   const handleFilterProperties = (
     properties: Property[], 
-    amenityFilter?: 'fedex' | 'ups' | 'starbucks' | Array<{type: 'fedex' | 'ups' | 'starbucks', distance?: number, operator?: 'within' | 'at least'}>
+    amenityFilter?: 'fedex' | 'ups' | 'starbucks' | Array<{type: 'fedex' | 'ups' | 'starbucks', distance?: number, operator?: 'within' | 'at least'}> | NearbyLocation[]
   ) => {
     setFilteredProperties(properties);
     
     if (!amenityFilter) {
       setFilteredAmenities([]);
+      return;
+    }
+    
+    // Handle case when amenityFilter is already a NearbyLocation array
+    if (Array.isArray(amenityFilter) && amenityFilter.length > 0 && 'id' in amenityFilter[0]) {
+      setFilteredAmenities(amenityFilter as NearbyLocation[]);
       return;
     }
     
@@ -32,7 +38,7 @@ const Index = () => {
       setFilteredAmenities(relevantAmenities);
     } else if (Array.isArray(amenityFilter)) {
       // Multiple amenity types
-      const amenityTypes = amenityFilter.map(a => a.type);
+      const amenityTypes = amenityFilter.map(a => typeof a === 'string' ? a : a.type);
       const uniqueTypes = [...new Set(amenityTypes)];
       const relevantAmenities = nearbyLocations.filter(loc => uniqueTypes.includes(loc.type));
       setFilteredAmenities(relevantAmenities);
