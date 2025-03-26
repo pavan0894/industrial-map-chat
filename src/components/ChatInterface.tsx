@@ -305,13 +305,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const response = `I found ${filteredProperties.length} properties that are ${conditionsText}:`;
       addBotResponse(response);
       
-      // Instead of just providing the types, pass the actual amenities to display
       const uniqueTypes = [...new Set(conditions.map(c => c.type))];
       const amenitiesForMap = nearbyLocations.filter(loc => uniqueTypes.includes(loc.type));
       
       const propertiesToShow = filteredProperties.map(item => item.property);
       
-      // Pass the full amenities array to display, not just the types
       onFilterProperties(propertiesToShow, amenitiesForMap);
       
       if (filteredProperties.length > 0) {
@@ -368,7 +366,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       addBotResponse(response);
       
-      // Pass the actual amenities to display on the map, not just the type
       const amenitiesForMap = nearbyLocations.filter(loc => loc.type === amenityType);
       onFilterProperties([property], amenitiesForMap);
     } else {
@@ -414,7 +411,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       addBotResponse(response);
       
       const filteredProperties = propertiesWithDistance.map(item => item.property);
-      // Pass the actual amenities to display, not just the type
       const amenitiesForMap = nearbyLocations.filter(loc => loc.type === amenityType);
       onFilterProperties(filteredProperties, amenitiesForMap);
       
@@ -482,7 +478,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       const propertiesToShow = propertiesWithinDistance.map(item => item.property);
       
-      // Pass the actual amenities to display, not just the type
       const amenitiesForMap = nearbyLocations.filter(loc => loc.type === amenityType);
       onFilterProperties(propertiesToShow, amenitiesForMap);
       
@@ -545,7 +540,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
           <div>
             <h3 className="font-medium text-sm">Property Assistant</h3>
-            <p className="text-xs text-muted-foreground">Dallas Industrial Properties</p>
           </div>
         </div>
       </div>
