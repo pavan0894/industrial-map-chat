@@ -4,8 +4,6 @@ import { Property, properties } from '@/data/properties';
 import { NearbyLocation, nearbyLocations } from '@/data/nearbyLocations';
 import MapComponent from './MapComponent';
 import ChatInterface from './ChatInterface';
-import PropertyCard from './PropertyCard';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Building, MapPin, X } from 'lucide-react';
 
@@ -69,39 +67,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       
       {/* Main content */}
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Property list and chat (left side) */}
+        {/* Chat interface (left side) */}
         <div 
           className={`
             flex flex-col w-full md:w-2/5 p-4
             ${showMobileChat ? 'flex' : 'hidden'} md:flex
           `}
         >
-          <div className="flex-1 flex flex-col h-full space-y-4">
+          <div className="flex-1 flex flex-col h-full">
             <ChatInterface 
               selectedProperty={selectedProperty} 
               onPropertySelect={handlePropertySelect}
               properties={properties}
               onFilterProperties={handleFilterProperties}
             />
-            
-            {/* Property list */}
-            <div className="rounded-xl border overflow-hidden h-1/3 bg-white/50 dark:bg-gray-950/50 backdrop-blur-sm">
-              <div className="p-3 border-b bg-white dark:bg-gray-900">
-                <h2 className="font-medium text-sm">Featured Properties</h2>
-              </div>
-              <ScrollArea className="h-[calc(100%-40px)]">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-3 p-3">
-                  {properties.slice(0, 6).map(property => (
-                    <PropertyCard 
-                      key={property.id}
-                      property={property}
-                      onClick={() => handlePropertySelect(property)}
-                      isSelected={selectedProperty?.id === property.id}
-                    />
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
           </div>
         </div>
         
