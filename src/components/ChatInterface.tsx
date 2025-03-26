@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -99,25 +98,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const processUserQuery = (query: string) => {
     const lowerQuery = query.toLowerCase();
     
-    // New regex pattern to match multiple location conditions
     const multipleConditionsRegex = /(within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)(?:.+?)((?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks))/i;
     const multiMatch = query.match(multipleConditionsRegex);
     
     if (multiMatch) {
-      // First condition
       const firstOperator = multiMatch[1].toLowerCase() as 'within' | 'at least';
       const firstDistance = parseFloat(multiMatch[2]);
       const firstUnit = multiMatch[3].toLowerCase().startsWith('mile') ? 'miles' : 'km';
       const firstAmenityType = multiMatch[4].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
       
-      // Second condition
       const secondCondition = multiMatch[5];
       const secondOperator = secondCondition.match(/(within|at least)/i)?.[0].toLowerCase() as 'within' | 'at least';
       const secondDistance = parseFloat(multiMatch[6]);
       const secondUnit = multiMatch[7].toLowerCase().startsWith('mile') ? 'miles' : 'km';
       const secondAmenityType = multiMatch[8].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
       
-      // Convert to kilometers for calculations
       const firstDistanceKm = firstUnit === 'miles' ? firstDistance * 1.60934 : firstDistance;
       const secondDistanceKm = secondUnit === 'miles' ? secondDistance * 1.60934 : secondDistance;
       

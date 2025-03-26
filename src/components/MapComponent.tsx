@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -27,19 +26,17 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const [selectedAmenity, setSelectedAmenity] = useState<NearbyLocation | null>(null);
   const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
   
-  // Your Mapbox access token
   const MAPBOX_TOKEN = 'pk.eyJ1IjoicGF2YW4wODk0IiwiYSI6ImNtOG96eTFocTA1dXoyanBzcXhuYmY3b2kifQ.hxIlEcLal8KBl_1005RHeA';
 
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    // Initialize map
     mapboxgl.accessToken = MAPBOX_TOKEN;
     
     const mapInstance = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/light-v11',
-      center: [-96.8, 32.78], // Dallas area
+      center: [-96.8, 32.78],
       zoom: 10,
       attributionControl: false,
       pitchWithRotate: false,
@@ -47,7 +44,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
     map.current = mapInstance;
 
-    // Add navigation controls with a clean design
     mapInstance.addControl(
       new mapboxgl.NavigationControl({
         showCompass: true,
@@ -56,59 +52,45 @@ const MapComponent: React.FC<MapComponentProps> = ({
       'bottom-right'
     );
 
-    // Add attributions in a custom container
     mapInstance.addControl(new mapboxgl.AttributionControl({
       compact: true,
     }));
 
-    // Setup map load event
     mapInstance.on('load', () => {
       refreshMarkers();
 
-      // Fly to selected property if available
       if (selectedProperty) {
         flyToProperty(selectedProperty);
       }
     });
 
-    // Cleanup on unmount
     return () => {
-      // Clean up markers
       Object.values(markersRef.current).forEach(marker => marker.remove());
       
-      // Clean up map
       if (map.current) {
         map.current.remove();
       }
     };
-  }, []); // Only run once on component mount
+  }, []);
 
-  // Effect to handle selected property changes
   useEffect(() => {
     if (!map.current || !selectedProperty) return;
     
-    // Fly to the selected property
     flyToProperty(selectedProperty);
     
-    // Update marker appearances
     Object.entries(markersRef.current).forEach(([id, marker]) => {
-      // Skip if not a property marker (amenity markers have different prefix)
       if (!id.startsWith('property-')) return;
       
-      // Get the marker element and update its appearance based on selection
       const markerElement = marker.getElement();
       const propertyId = id.replace('property-', '');
       const isSelected = propertyId === selectedProperty.id;
       
-      // Create a temporary div to render the updated marker
       const div = document.createElement('div');
       const root = createRoot(div);
       
-      // Find the property data from our markers
       const property = allProperties.find(p => p.id === propertyId);
       if (!property) return;
       
-      // Render the updated marker
       root.render(
         <PropertyMarker 
           property={property} 
@@ -117,45 +99,48 @@ const MapComponent: React.FC<MapComponentProps> = ({
         />
       );
       
-      // Replace the marker element's content
       markerElement.innerHTML = '';
       markerElement.appendChild(div);
     });
   }, [selectedProperty, onPropertySelect]);
 
-  // Effect to handle filtered properties and amenities
   useEffect(() => {
     if (!map.current) return;
     
+    console.log("Refreshing markers with amenities:", amenities.map(a => a.type));
     refreshMarkers();
     
-    // Adjust map bounds to show all filtered properties
-    if (properties.length > 0) {
-      fitMapToMarkers(properties.map(p => p.coordinates));
+    if (properties.length > 0 || amenities.length > 0) {
+      const coordinatesToFit = [
+        ...properties.map(p => p.coordinates),
+        ...amenities.map(a => a.coordinates)
+      ];
+      fitMapToMarkers(coordinatesToFit);
     }
   }, [properties, amenities]);
 
-  // Function to remove all markers and add new ones based on filtered data
   const refreshMarkers = () => {
     if (!map.current) return;
     
-    // Remove all existing markers
     Object.values(markersRef.current).forEach(marker => marker.remove());
     markersRef.current = {};
     
-    // Add filtered property markers
     properties.forEach(property => {
       addPropertyMarker(property);
     });
 
-    // Add filtered amenity markers or show all if no filter
-    const amenitiesToShow = amenities.length > 0 ? amenities : allNearbyLocations;
-    amenitiesToShow.forEach(location => {
-      addAmenityMarker(location);
-    });
+    if (amenities.length > 0) {
+      console.log(`Adding ${amenities.length} filtered amenities to map`);
+      amenities.forEach(location => {
+        addAmenityMarker(location);
+      });
+    } else {
+      allNearbyLocations.forEach(location => {
+        addAmenityMarker(location);
+      });
+    }
   };
 
-  // Function to fit map to show all markers
   const fitMapToMarkers = (coordinates: [number, number][]) => {
     if (!map.current || coordinates.length === 0) return;
     
@@ -172,13 +157,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
     });
   };
 
-  // Function to show amenity popup
   const handleAmenityClick = (location: NearbyLocation) => {
     setSelectedAmenity(location);
     
     if (!map.current) return;
     
-    // Create popup
     const popup = new mapboxgl.Popup({
       closeButton: true,
       closeOnClick: true,
@@ -194,12 +177,10 @@ const MapComponent: React.FC<MapComponentProps> = ({
       `)
       .addTo(map.current);
     
-    // Close popup when closed
     popup.on('close', () => {
       setSelectedAmenity(null);
     });
     
-    // Fly to the amenity
     map.current.flyTo({
       center: location.coordinates,
       zoom: 14,
@@ -208,15 +189,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
     });
   };
 
-  // Function to add a marker for a property
   const addPropertyMarker = (property: Property) => {
     if (!map.current) return;
     
-    // Create a div element for the marker
     const markerElement = document.createElement('div');
     const root = createRoot(markerElement);
     
-    // Render our custom PropertyMarker component into the div
     root.render(
       <PropertyMarker 
         property={property} 
@@ -225,7 +203,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
       />
     );
     
-    // Create a Mapbox marker with the custom element
     const marker = new mapboxgl.Marker({
       element: markerElement,
       anchor: 'center',
@@ -233,19 +210,15 @@ const MapComponent: React.FC<MapComponentProps> = ({
       .setLngLat(property.coordinates)
       .addTo(map.current);
     
-    // Store the marker reference
     markersRef.current[`property-${property.id}`] = marker;
   };
 
-  // Function to add a marker for a nearby amenity
   const addAmenityMarker = (location: NearbyLocation) => {
     if (!map.current) return;
     
-    // Create a div element for the marker
     const markerElement = document.createElement('div');
     const root = createRoot(markerElement);
     
-    // Render our custom AmenityMarker component into the div
     root.render(
       <AmenityMarker 
         location={location}
@@ -253,7 +226,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
       />
     );
     
-    // Create a Mapbox marker with the custom element
     const marker = new mapboxgl.Marker({
       element: markerElement,
       anchor: 'center',
@@ -261,11 +233,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
       .setLngLat(location.coordinates)
       .addTo(map.current);
     
-    // Store the marker reference
     markersRef.current[`amenity-${location.id}`] = marker;
   };
 
-  // Function to fly to a property
   const flyToProperty = (property: Property) => {
     if (!map.current) return;
     
@@ -277,7 +247,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
     });
   };
 
-  // Toggle legend collapse
   const toggleLegend = () => {
     setIsLegendCollapsed(!isLegendCollapsed);
   };
@@ -286,13 +255,10 @@ const MapComponent: React.FC<MapComponentProps> = ({
     <div className="relative w-full h-full rounded-xl overflow-hidden shadow-xl">
       <div ref={mapContainer} className="absolute inset-0" />
       
-      {/* Map overlay gradient */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/10 to-white/0 dark:from-black/10 dark:to-black/0" />
       
-      {/* Improved Legend - Collapsible */}
       <div className={`absolute bottom-4 left-4 z-10 transition-all duration-300 ${isLegendCollapsed ? 'w-10' : 'w-48'}`}>
         <div className="bg-white/90 dark:bg-black/80 backdrop-blur-md rounded-lg shadow-lg overflow-hidden border border-border/30">
-          {/* Legend header with toggle button */}
           <div 
             className="flex items-center justify-between p-2.5 bg-secondary/10 cursor-pointer"
             onClick={toggleLegend}
@@ -312,10 +278,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
             </div>
           </div>
           
-          {/* Legend content */}
           <div className={`transition-all duration-300 ease-in-out ${isLegendCollapsed ? 'max-h-0 opacity-0' : 'max-h-96 opacity-100'} overflow-hidden`}>
             <div className="p-2.5 space-y-2">
-              {/* Property types */}
               <div className="text-xs font-medium mb-1">Properties</div>
               <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
                 <div className="flex items-center gap-1.5">
@@ -340,7 +304,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 </div>
               </div>
               
-              {/* Amenity types */}
               <div className="text-xs font-medium mb-1 mt-2 pt-1.5 border-t border-gray-200 dark:border-gray-700">Nearby Services</div>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5">
@@ -367,7 +330,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
         </div>
       </div>
       
-      {/* Results count */}
       {properties.length !== allProperties.length && (
         <div className="absolute top-4 left-4 p-2 bg-white/90 dark:bg-black/80 backdrop-blur-md rounded-lg shadow-lg z-10">
           <div className="text-xs font-medium">
