@@ -92,6 +92,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const processUserQuery = (query: string) => {
     const lowerQuery = query.toLowerCase();
     
+    const distanceRegex = /within\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)/i;
+    const distanceMatch = query.match(distanceRegex);
+    
+    if (distanceMatch) {
+      const distance = parseFloat(distanceMatch[1]);
+      const unit = distanceMatch[2].toLowerCase().startsWith('mile') ? 'miles' : 'km';
+      const amenityType = distanceMatch[3].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+      
+      const distanceInKm = unit === 'miles' ? distance * 1.60934 : distance;
+      
+      findPropertiesWithinDistanceOfAmenity(amenityType, distanceInKm, unit === 'miles' ? distance : distance / 1.60934);
+      return;
+    }
+    
     if (lowerQuery.includes('nearby') || lowerQuery.includes('close') || lowerQuery.includes('near')) {
       if (lowerQuery.includes('fedex') || lowerQuery.includes('shipping')) {
         findNearbyAmenities('fedex', selectedProperty);
@@ -249,6 +263,62 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       }
     } else {
       addBotResponse(`I couldn't find properties near ${amenityName} locations.`);
+    }
+  };
+  
+  const findPropertiesWithinDistanceOfAmenity = (amenityType: 'fedex' | 'ups' | 'starbucks', distanceKm: number, displayDistance: number) => {
+    const amenities = nearbyLocations.filter(loc => loc.type === amenityType);
+    if (!amenities.length) {
+      addBotResponse(`I couldn't find any ${amenityType.toUpperCase()} locations in our database.`);
+      return;
+    }
+    
+    const propertiesWithinDistance = properties.map(property => {
+      let closestDistance = Number.MAX_VALUE;
+      let closestAmenity: NearbyLocation | null = null;
+      
+      amenities.forEach(amenity => {
+        const distance = calculateDistance(
+          property.coordinates[1], property.coordinates[0],
+          amenity.coordinates[1], amenity.coordinates[0]
+        );
+        
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestAmenity = amenity;
+        }
+      });
+      
+      return {
+        property,
+        distance: closestDistance,
+        amenity: closestAmenity
+      };
+    })
+    .filter(item => item.distance <= distanceKm)
+    .sort((a, b) => a.distance - b.distance);
+    
+    const amenityName = amenityType === 'fedex' ? 'FedEx' : 
+                         amenityType === 'ups' ? 'UPS' : 'Starbucks';
+    
+    if (propertiesWithinDistance.length > 0) {
+      const distanceUnit = distanceKm === displayDistance ? 'km' : 'miles';
+      const response = `I found ${propertiesWithinDistance.length} properties within ${displayDistance} ${distanceUnit} of a ${amenityName} location:`;
+      addBotResponse(response);
+      
+      handlePropertySelection(propertiesWithinDistance[0].property);
+      
+      if (propertiesWithinDistance[0].amenity) {
+        const additionalInfo = `This property is approximately ${(propertiesWithinDistance[0].distance * 0.621371).toFixed(2)} miles from ${propertiesWithinDistance[0].amenity.name} at ${propertiesWithinDistance[0].amenity.address}.`;
+        addBotResponse(additionalInfo);
+        
+        if (propertiesWithinDistance.length > 1) {
+          const moreInfo = `There are ${propertiesWithinDistance.length - 1} more properties within your specified distance. Would you like to see the next one?`;
+          addBotResponse(moreInfo);
+        }
+      }
+    } else {
+      addBotResponse(`I couldn't find any properties within ${displayDistance} ${distanceKm === displayDistance ? 'km' : 'miles'} of a ${amenityName} location.`);
     }
   };
   
