@@ -82,29 +82,76 @@ const PropertyMarker: React.FC<PropertyMarkerProps> = ({ property, selected, onC
     <div 
       onClick={onClick}
       className={`
-        flex items-center justify-center
-        w-8 h-8 rounded-full 
-        transition-all duration-300 
-        ${selected ? 'scale-125 ring-2 ring-white shadow-lg' : 'scale-100 hover:scale-110'}
+        relative
+        flex flex-col items-center justify-center
+        group
         cursor-pointer
-        text-white
+        transition-all duration-300
+        ${selected ? 'z-10 scale-110' : 'hover:scale-105'}
       `}
       style={{ 
-        backgroundColor: markerColor,
-        boxShadow: selected ? `0 0 0 4px rgba(255,255,255,0.4), 0 8px 16px -4px ${markerColor}80` : `0 4px 8px -2px ${markerColor}80`
+        filter: selected ? 'drop-shadow(0 10px 8px rgba(0, 0, 0, 0.2))' : 'none',
+        transform: `${selected ? 'translateY(-5px)' : 'translateY(0)'}`
       }}
     >
-      {getMarkerIcon()}
-      {/* Add bounce animation to selected marker */}
+      {/* Google Maps-style pin */}
+      <div 
+        className={`
+          w-7 h-10
+          flex flex-col
+          relative
+        `}
+      >
+        {/* Pin head */}
+        <div 
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white shadow-md"
+          style={{ backgroundColor: markerColor }}
+        >
+          {getMarkerIcon()}
+        </div>
+        
+        {/* Pin tail/pointer */}
+        <div className="absolute top-[22px] left-0 right-0 mx-auto w-0 h-0" style={{
+          borderLeft: '7px solid transparent',
+          borderRight: '7px solid transparent',
+          borderTop: `14px solid ${markerColor}`,
+        }} />
+      </div>
+      
+      {/* Shadow */}
+      <div 
+        className={`
+          absolute -bottom-1.5 
+          w-3 h-1 
+          rounded-full 
+          bg-black/30 
+          blur-[1px]
+          transition-all duration-300
+          ${selected ? 'opacity-80 scale-125' : 'opacity-50 scale-100'}
+        `}
+      />
+      
+      {/* Bounce animation for selected property */}
       {selected && (
-        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-          <div className="w-1 h-6 animate-bounce">
+        <div 
+          className="absolute top-0 left-0 right-0 bottom-0 
+                     animate-bounce opacity-50 pointer-events-none"
+          style={{ 
+            animation: 'bounce 2s infinite',
+          }}
+        >
+          <div 
+            className="w-7 h-10 relative"
+          >
             <div 
-              className="w-1 h-6"
-              style={{
-                background: `linear-gradient(to bottom, ${markerColor}, transparent)`
-              }}
+              className="w-7 h-7 rounded-full"
+              style={{ backgroundColor: markerColor }}
             />
+            <div className="absolute top-[22px] left-0 right-0 mx-auto w-0 h-0" style={{
+              borderLeft: '7px solid transparent',
+              borderRight: '7px solid transparent',
+              borderTop: `14px solid ${markerColor}`,
+            }} />
           </div>
         </div>
       )}
