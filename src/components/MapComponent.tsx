@@ -25,6 +25,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
   const [selectedAmenity, setSelectedAmenity] = useState<NearbyLocation | null>(null);
+  const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
   
   // Your Mapbox access token
   const MAPBOX_TOKEN = 'pk.eyJ1IjoicGF2YW4wODk0IiwiYSI6ImNtOG96eTFocTA1dXoyanBzcXhuYmY3b2kifQ.hxIlEcLal8KBl_1005RHeA';
@@ -276,6 +277,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
     });
   };
 
+  // Toggle legend collapse
+  const toggleLegend = () => {
+    setIsLegendCollapsed(!isLegendCollapsed);
+  };
+
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden shadow-xl">
       <div ref={mapContainer} className="absolute inset-0" />
@@ -283,52 +289,80 @@ const MapComponent: React.FC<MapComponentProps> = ({
       {/* Map overlay gradient */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/10 to-white/0 dark:from-black/10 dark:to-black/0" />
       
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 p-3 bg-white/90 dark:bg-black/80 backdrop-blur-md rounded-lg shadow-lg z-10">
-        <div className="text-xs font-medium mb-2">Map Legend</div>
-        <div className="space-y-1.5">
-          {/* Property types */}
-          <div className="text-xs font-medium mb-1 mt-2">Properties</div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <span className="text-xs">Warehouse</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-orange-500" />
-            <span className="text-xs">Manufacturing</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span className="text-xs">Distribution</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-purple-500" />
-            <span className="text-xs">Flex</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-pink-500" />
-            <span className="text-xs">Office</span>
+      {/* Improved Legend - Collapsible */}
+      <div className={`absolute bottom-4 left-4 z-10 transition-all duration-300 ${isLegendCollapsed ? 'w-10' : 'w-48'}`}>
+        <div className="bg-white/90 dark:bg-black/80 backdrop-blur-md rounded-lg shadow-lg overflow-hidden border border-border/30">
+          {/* Legend header with toggle button */}
+          <div 
+            className="flex items-center justify-between p-2.5 bg-secondary/10 cursor-pointer"
+            onClick={toggleLegend}
+          >
+            <span className={`text-xs font-medium transition-opacity ${isLegendCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+              Map Legend
+            </span>
+            <div className="flex items-center justify-center w-5 h-5 bg-white dark:bg-gray-800 rounded-full shadow-sm">
+              <svg 
+                className={`w-3 h-3 text-gray-600 dark:text-gray-300 transition-transform ${isLegendCollapsed ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isLegendCollapsed ? "M13 7l5 5m0 0l-5 5" : "M11 17l-5-5m0 0l5-5"} />
+              </svg>
+            </div>
           </div>
           
-          {/* Amenity types */}
-          <div className="text-xs font-medium mb-1 mt-2">Nearby Services</div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 flex items-center justify-center bg-white rounded-full">
-              <div className="w-2 h-2" style={{ backgroundColor: '#7C2629' }} />
+          {/* Legend content */}
+          <div className={`transition-all duration-300 ease-in-out ${isLegendCollapsed ? 'max-h-0 opacity-0' : 'max-h-96 opacity-100'} overflow-hidden`}>
+            <div className="p-2.5 space-y-2">
+              {/* Property types */}
+              <div className="text-xs font-medium mb-1">Properties</div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-blue-500" />
+                  <span className="text-xs">Warehouse</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-orange-500" />
+                  <span className="text-xs">Manufacturing</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  <span className="text-xs">Distribution</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-purple-500" />
+                  <span className="text-xs">Flex</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-pink-500" />
+                  <span className="text-xs">Office</span>
+                </div>
+              </div>
+              
+              {/* Amenity types */}
+              <div className="text-xs font-medium mb-1 mt-2 pt-1.5 border-t border-gray-200 dark:border-gray-700">Nearby Services</div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 flex items-center justify-center bg-white rounded-full">
+                    <div className="w-2 h-2" style={{ backgroundColor: '#7C2629' }} />
+                  </div>
+                  <span className="text-xs">UPS</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 flex items-center justify-center bg-white rounded-full">
+                    <div className="w-2 h-2" style={{ backgroundColor: '#4D148C' }} />
+                  </div>
+                  <span className="text-xs">FedEx</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 flex items-center justify-center bg-white rounded-full">
+                    <div className="w-2 h-2" style={{ backgroundColor: '#066D38' }} />
+                  </div>
+                  <span className="text-xs">Starbucks</span>
+                </div>
+              </div>
             </div>
-            <span className="text-xs">UPS</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 flex items-center justify-center bg-white rounded-full">
-              <div className="w-2 h-2" style={{ backgroundColor: '#4D148C' }} />
-            </div>
-            <span className="text-xs">FedEx</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 flex items-center justify-center bg-white rounded-full">
-              <div className="w-2 h-2" style={{ backgroundColor: '#066D38' }} />
-            </div>
-            <span className="text-xs">Starbucks</span>
           </div>
         </div>
       </div>
