@@ -3,17 +3,24 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createRoot } from 'react-dom/client';
-import { Property, properties } from '@/data/properties';
+import { Property, properties as allProperties } from '@/data/properties';
 import PropertyMarker from './PropertyMarker';
-import { NearbyLocation, nearbyLocations } from '@/data/nearbyLocations';
+import { NearbyLocation, nearbyLocations as allNearbyLocations } from '@/data/nearbyLocations';
 import AmenityMarker from './AmenityMarker';
 
 interface MapComponentProps {
   onPropertySelect: (property: Property) => void;
   selectedProperty: Property | null;
+  properties: Property[];
+  amenities?: NearbyLocation[];
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ onPropertySelect, selectedProperty }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ 
+  onPropertySelect, 
+  selectedProperty, 
+  properties = allProperties,
+  amenities = []
+}) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
@@ -55,15 +62,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ onPropertySelect, selectedP
 
     // Setup map load event
     mapInstance.on('load', () => {
-      // Add properties markers
-      properties.forEach(property => {
-        addPropertyMarker(property);
-      });
-
-      // Add nearby locations markers
-      nearbyLocations.forEach(location => {
-        addAmenityMarker(location);
-      });
+      refreshMarkers();
 
       // Fly to selected property if available
       if (selectedProperty) {
@@ -105,7 +104,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ onPropertySelect, selectedP
       const root = createRoot(div);
       
       // Find the property data from our markers
-      const property = properties.find(p => p.id === propertyId);
+      const property = allProperties.find(p => p.id === propertyId);
       if (!property) return;
       
       // Render the updated marker
@@ -122,6 +121,55 @@ const MapComponent: React.FC<MapComponentProps> = ({ onPropertySelect, selectedP
       markerElement.appendChild(div);
     });
   }, [selectedProperty, onPropertySelect]);
+
+  // Effect to handle filtered properties and amenities
+  useEffect(() => {
+    if (!map.current) return;
+    
+    refreshMarkers();
+    
+    // Adjust map bounds to show all filtered properties
+    if (properties.length > 0) {
+      fitMapToMarkers(properties.map(p => p.coordinates));
+    }
+  }, [properties, amenities]);
+
+  // Function to remove all markers and add new ones based on filtered data
+  const refreshMarkers = () => {
+    if (!map.current) return;
+    
+    // Remove all existing markers
+    Object.values(markersRef.current).forEach(marker => marker.remove());
+    markersRef.current = {};
+    
+    // Add filtered property markers
+    properties.forEach(property => {
+      addPropertyMarker(property);
+    });
+
+    // Add filtered amenity markers or show all if no filter
+    const amenitiesToShow = amenities.length > 0 ? amenities : allNearbyLocations;
+    amenitiesToShow.forEach(location => {
+      addAmenityMarker(location);
+    });
+  };
+
+  // Function to fit map to show all markers
+  const fitMapToMarkers = (coordinates: [number, number][]) => {
+    if (!map.current || coordinates.length === 0) return;
+    
+    const bounds = new mapboxgl.LngLatBounds();
+    
+    coordinates.forEach(coord => {
+      bounds.extend(coord);
+    });
+    
+    map.current.fitBounds(bounds, {
+      padding: 50,
+      maxZoom: 15,
+      duration: 1000
+    });
+  };
 
   // Function to show amenity popup
   const handleAmenityClick = (location: NearbyLocation) => {
@@ -284,6 +332,15 @@ const MapComponent: React.FC<MapComponentProps> = ({ onPropertySelect, selectedP
           </div>
         </div>
       </div>
+      
+      {/* Results count */}
+      {properties.length !== allProperties.length && (
+        <div className="absolute top-4 left-4 p-2 bg-white/90 dark:bg-black/80 backdrop-blur-md rounded-lg shadow-lg z-10">
+          <div className="text-xs font-medium">
+            Showing {properties.length} of {allProperties.length} properties
+          </div>
+        </div>
+      )}
     </div>
   );
 };

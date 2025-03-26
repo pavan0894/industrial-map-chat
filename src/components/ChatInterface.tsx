@@ -10,6 +10,7 @@ interface ChatInterfaceProps {
   selectedProperty: Property | null;
   onPropertySelect: (property: Property) => void;
   properties: Property[];
+  onFilterProperties: (properties: Property[], amenityType?: 'fedex' | 'ups' | 'starbucks') => void;
 }
 
 interface ChatMessage {
@@ -23,7 +24,8 @@ interface ChatMessage {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
   selectedProperty, 
   onPropertySelect,
-  properties 
+  properties,
+  onFilterProperties
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -37,6 +39,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    onFilterProperties(properties);
+  }, []);
   
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -137,6 +143,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       }
     }
     
+    if ((lowerQuery.includes('all') || lowerQuery.includes('reset')) && 
+        (lowerQuery.includes('properties') || lowerQuery.includes('show'))) {
+      onFilterProperties(properties);
+      addBotResponse("Showing all properties on the map.");
+      return;
+    }
+    
     if (lowerQuery.includes('type') || lowerQuery.includes('types')) {
       const types = [...new Set(properties.map(p => p.type))];
       const response = `We have several types of industrial properties: ${types.join(', ')}.`;
@@ -151,6 +164,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         if (filteredProperties.length > 0) {
           const response = `I found ${filteredProperties.length} ${type} properties. Here's one example:`;
           addBotResponse(response);
+          onFilterProperties(filteredProperties);
           handlePropertySelection(filteredProperties[0]);
           return;
         }
@@ -213,6 +227,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       });
       
       addBotResponse(response);
+      
+      onFilterProperties([property], amenityType);
     } else {
       addBotResponse(`I couldn't find any ${amenityType.toUpperCase()} locations near ${property.name}.`);
     }
@@ -254,6 +270,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (propertiesWithDistance.length) {
       const response = `Here are ${propertiesWithDistance.length} properties closest to ${amenityName} locations:`;
       addBotResponse(response);
+      
+      const filteredProperties = propertiesWithDistance.map(item => item.property);
+      onFilterProperties(filteredProperties, amenityType);
       
       handlePropertySelection(propertiesWithDistance[0].property);
       
@@ -305,6 +324,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const distanceUnit = distanceKm === displayDistance ? 'km' : 'miles';
       const response = `I found ${propertiesWithinDistance.length} properties within ${displayDistance} ${distanceUnit} of a ${amenityName} location:`;
       addBotResponse(response);
+      
+      const filteredProperties = propertiesWithinDistance.map(item => item.property);
+      onFilterProperties(filteredProperties, amenityType);
       
       handlePropertySelection(propertiesWithinDistance[0].property);
       
