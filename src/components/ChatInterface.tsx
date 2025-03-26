@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ interface ChatInterfaceProps {
   selectedProperty: Property | null;
   onPropertySelect: (property: Property) => void;
   properties: Property[];
-  onFilterProperties: (properties: Property[], amenityType?: 'fedex' | 'ups' | 'starbucks' | Array<{type: 'fedex' | 'ups' | 'starbucks', distance?: number, operator?: 'within' | 'at least'}>) => void;
+  onFilterProperties: (properties: Property[], amenityType?: 'fedex' | 'ups' | 'starbucks' | Array<{type: 'fedex' | 'ups' | 'starbucks', distance?: number, operator?: 'within' | 'at least'}> | NearbyLocation[]) => void;
 }
 
 interface ChatMessage {
@@ -98,20 +99,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const processUserQuery = (query: string) => {
     const lowerQuery = query.toLowerCase();
     
-    const complexDistanceRegex = /(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)(?:.*(?:and|or).*(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks))?/i;
-    const complexMatch = query.match(complexDistanceRegex);
+    // New regex pattern to match multiple location conditions
+    const multipleConditionsRegex = /(within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)(?:.+?)((?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks))/i;
+    const multiMatch = query.match(multipleConditionsRegex);
     
-    if (complexMatch && (complexMatch[4] || complexMatch[5] || complexMatch[6])) {
-      const firstDistance = parseFloat(complexMatch[1]);
-      const firstUnit = complexMatch[2].toLowerCase().startsWith('mile') ? 'miles' : 'km';
-      const firstAmenityType = complexMatch[3].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
-      const firstOperator = lowerQuery.includes('within') ? 'within' : 'at least';
+    if (multiMatch) {
+      // First condition
+      const firstOperator = multiMatch[1].toLowerCase() as 'within' | 'at least';
+      const firstDistance = parseFloat(multiMatch[2]);
+      const firstUnit = multiMatch[3].toLowerCase().startsWith('mile') ? 'miles' : 'km';
+      const firstAmenityType = multiMatch[4].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
       
-      const secondDistance = parseFloat(complexMatch[4]);
-      const secondUnit = complexMatch[5].toLowerCase().startsWith('mile') ? 'miles' : 'km';
-      const secondAmenityType = complexMatch[6].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
-      const secondOperator = lowerQuery.includes('at least') ? 'at least' : 'within';
+      // Second condition
+      const secondCondition = multiMatch[5];
+      const secondOperator = secondCondition.match(/(within|at least)/i)?.[0].toLowerCase() as 'within' | 'at least';
+      const secondDistance = parseFloat(multiMatch[6]);
+      const secondUnit = multiMatch[7].toLowerCase().startsWith('mile') ? 'miles' : 'km';
+      const secondAmenityType = multiMatch[8].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
       
+      // Convert to kilometers for calculations
       const firstDistanceKm = firstUnit === 'miles' ? firstDistance * 1.60934 : firstDistance;
       const secondDistanceKm = secondUnit === 'miles' ? secondDistance * 1.60934 : secondDistance;
       
@@ -119,14 +125,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         { 
           type: firstAmenityType, 
           distance: firstDistanceKm, 
-          operator: firstOperator as 'within' | 'at least',
+          operator: firstOperator,
           displayDistance: firstDistance,
           displayUnit: firstUnit
         },
         { 
           type: secondAmenityType, 
           distance: secondDistanceKm, 
-          operator: secondOperator as 'within' | 'at least',
+          operator: secondOperator,
           displayDistance: secondDistance,
           displayUnit: secondUnit
         }
