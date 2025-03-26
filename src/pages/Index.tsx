@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import MapComponent from '@/components/MapComponent';
-import { Property } from '@/data/properties';
+import ChatInterface from '@/components/ChatInterface';
+import { Property, properties } from '@/data/properties';
 
 const Index = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -13,11 +14,20 @@ const Index = () => {
   
   return (
     <Layout>
-      <div className="w-full h-full">
-        <MapComponent 
-          onPropertySelect={handlePropertySelect}
-          selectedProperty={selectedProperty}
-        />
+      <div className="flex w-full h-full gap-4">
+        <div className="w-1/3 h-full">
+          <ChatInterface 
+            selectedProperty={selectedProperty}
+            onPropertySelect={handlePropertySelect}
+            properties={properties}
+          />
+        </div>
+        <div className="w-2/3 h-full">
+          <MapComponent 
+            onPropertySelect={handlePropertySelect}
+            selectedProperty={selectedProperty}
+          />
+        </div>
       </div>
     </Layout>
   );
