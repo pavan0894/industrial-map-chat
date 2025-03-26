@@ -10,7 +10,7 @@ interface ChatInterfaceProps {
   selectedProperty: Property | null;
   onPropertySelect: (property: Property) => void;
   properties: Property[];
-  onFilterProperties: (properties: Property[], amenityType?: 'fedex' | 'ups' | 'starbucks') => void;
+  onFilterProperties: (properties: Property[], amenityType?: 'fedex' | 'ups' | 'starbucks' | Array<{type: 'fedex' | 'ups' | 'starbucks', distance?: number, operator?: 'within' | 'at least'}>) => void;
 }
 
 interface ChatMessage {
@@ -98,17 +98,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const processUserQuery = (query: string) => {
     const lowerQuery = query.toLowerCase();
     
-    const distanceRegex = /within\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)/i;
+    const complexDistanceRegex = /(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)(?:.*(?:and|or).*(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks))?/i;
+    const complexMatch = query.match(complexDistanceRegex);
+    
+    if (complexMatch && (complexMatch[4] || complexMatch[5] || complexMatch[6])) {
+      const firstDistance = parseFloat(complexMatch[1]);
+      const firstUnit = complexMatch[2].toLowerCase().startsWith('mile') ? 'miles' : 'km';
+      const firstAmenityType = complexMatch[3].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+      const firstOperator = lowerQuery.includes('within') ? 'within' : 'at least';
+      
+      const secondDistance = parseFloat(complexMatch[4]);
+      const secondUnit = complexMatch[5].toLowerCase().startsWith('mile') ? 'miles' : 'km';
+      const secondAmenityType = complexMatch[6].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+      const secondOperator = lowerQuery.includes('at least') ? 'at least' : 'within';
+      
+      const firstDistanceKm = firstUnit === 'miles' ? firstDistance * 1.60934 : firstDistance;
+      const secondDistanceKm = secondUnit === 'miles' ? secondDistance * 1.60934 : secondDistance;
+      
+      findPropertiesWithMultipleAmenityConditions([
+        { 
+          type: firstAmenityType, 
+          distance: firstDistanceKm, 
+          operator: firstOperator as 'within' | 'at least',
+          displayDistance: firstDistance,
+          displayUnit: firstUnit
+        },
+        { 
+          type: secondAmenityType, 
+          distance: secondDistanceKm, 
+          operator: secondOperator as 'within' | 'at least',
+          displayDistance: secondDistance,
+          displayUnit: secondUnit
+        }
+      ]);
+      return;
+    }
+    
+    const distanceRegex = /(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)/i;
     const distanceMatch = query.match(distanceRegex);
     
     if (distanceMatch) {
       const distance = parseFloat(distanceMatch[1]);
       const unit = distanceMatch[2].toLowerCase().startsWith('mile') ? 'miles' : 'km';
       const amenityType = distanceMatch[3].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+      const operator = lowerQuery.includes('within') ? 'within' : 'at least';
       
       const distanceInKm = unit === 'miles' ? distance * 1.60934 : distance;
       
-      findPropertiesWithinDistanceOfAmenity(amenityType, distanceInKm, unit === 'miles' ? distance : distance / 1.60934);
+      findPropertiesWithinDistanceOfAmenity(amenityType, distanceInKm, distance, operator);
       return;
     }
     
@@ -195,6 +232,110 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
     
     addBotResponse("I can help you find industrial properties in Dallas and information about nearby FedEx, UPS, and Starbucks locations. What specific information are you looking for?");
+  };
+  
+  const findPropertiesWithMultipleAmenityConditions = (
+    conditions: Array<{
+      type: 'fedex' | 'ups' | 'starbucks', 
+      distance: number, 
+      operator: 'within' | 'at least',
+      displayDistance: number,
+      displayUnit: string
+    }>
+  ) => {
+    const amenitiesByType = conditions.reduce((acc, condition) => {
+      acc[condition.type] = nearbyLocations.filter(loc => loc.type === condition.type);
+      return acc;
+    }, {} as Record<string, NearbyLocation[]>);
+    
+    const propertiesWithDistances = properties.map(property => {
+      const amenityDistances: Record<string, {distance: number, amenity: NearbyLocation}[]> = {};
+      
+      conditions.forEach(condition => {
+        const amenities = amenitiesByType[condition.type] || [];
+        
+        const distances = amenities.map(amenity => {
+          const distance = calculateDistance(
+            property.coordinates[1], property.coordinates[0],
+            amenity.coordinates[1], amenity.coordinates[0]
+          );
+          return { distance, amenity };
+        }).sort((a, b) => a.distance - b.distance);
+        
+        amenityDistances[condition.type] = distances;
+      });
+      
+      return { property, amenityDistances };
+    });
+    
+    const filteredProperties = propertiesWithDistances.filter(item => {
+      return conditions.every(condition => {
+        const distances = item.amenityDistances[condition.type] || [];
+        if (distances.length === 0) return false;
+        
+        const closestDistance = distances[0].distance;
+        
+        if (condition.operator === 'within') {
+          return closestDistance <= condition.distance;
+        } else { // at least
+          return closestDistance >= condition.distance;
+        }
+      });
+    });
+    
+    filteredProperties.sort((a, b) => {
+      const sumA = conditions.reduce((sum, condition) => {
+        const distances = a.amenityDistances[condition.type] || [];
+        return sum + (distances[0]?.distance || 0);
+      }, 0);
+      
+      const sumB = conditions.reduce((sum, condition) => {
+        const distances = b.amenityDistances[condition.type] || [];
+        return sum + (distances[0]?.distance || 0);
+      }, 0);
+      
+      return sumA - sumB;
+    });
+    
+    const conditionsText = conditions.map(condition => {
+      return `${condition.operator} ${condition.displayDistance} ${condition.displayUnit} of ${condition.type.toUpperCase()}`;
+    }).join(' and ');
+    
+    if (filteredProperties.length > 0) {
+      const response = `I found ${filteredProperties.length} properties that are ${conditionsText}:`;
+      addBotResponse(response);
+      
+      const amenitiesForMap: NearbyLocation[] = [];
+      conditions.forEach(condition => {
+        const amenities = nearbyLocations.filter(loc => loc.type === condition.type);
+        amenitiesForMap.push(...amenities);
+      });
+      
+      const propertiesToShow = filteredProperties.map(item => item.property);
+      
+      onFilterProperties(propertiesToShow, amenitiesForMap.map(a => ({ type: a.type })));
+      
+      if (filteredProperties.length > 0) {
+        handlePropertySelection(filteredProperties[0].property);
+        
+        const closestAmenities = conditions.map(condition => {
+          const distances = filteredProperties[0].amenityDistances[condition.type] || [];
+          if (distances.length > 0) {
+            const milesDistance = (distances[0].distance * 0.621371).toFixed(2);
+            return `${distances[0].amenity.name} (${condition.type.toUpperCase()}) at ${milesDistance} miles`;
+          }
+          return null;
+        }).filter(Boolean);
+        
+        if (closestAmenities.length > 0) {
+          const amenitiesInfo = `This property is close to: ${closestAmenities.join(', ')}.`;
+          addBotResponse(amenitiesInfo);
+        }
+      }
+    } else {
+      const response = `I couldn't find any properties that match all these criteria: ${conditionsText}.`;
+      addBotResponse(response);
+    }
   };
   
   const findNearbyAmenities = (amenityType: 'fedex' | 'ups' | 'starbucks', property: Property | null) => {
@@ -285,7 +426,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
   
-  const findPropertiesWithinDistanceOfAmenity = (amenityType: 'fedex' | 'ups' | 'starbucks', distanceKm: number, displayDistance: number) => {
+  const findPropertiesWithinDistanceOfAmenity = (
+    amenityType: 'fedex' | 'ups' | 'starbucks', 
+    distanceKm: number, 
+    displayDistance: number,
+    operator: 'within' | 'at least' = 'within'
+  ) => {
     const amenities = nearbyLocations.filter(loc => loc.type === amenityType);
     if (!amenities.length) {
       addBotResponse(`I couldn't find any ${amenityType.toUpperCase()} locations in our database.`);
@@ -314,7 +460,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         amenity: closestAmenity
       };
     })
-    .filter(item => item.distance <= distanceKm)
+    .filter(item => {
+      if (operator === 'within') {
+        return item.distance <= distanceKm;
+      } else { // at least
+        return item.distance >= distanceKm;
+      }
+    })
     .sort((a, b) => a.distance - b.distance);
     
     const amenityName = amenityType === 'fedex' ? 'FedEx' : 
@@ -322,25 +474,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     
     if (propertiesWithinDistance.length > 0) {
       const distanceUnit = distanceKm === displayDistance ? 'km' : 'miles';
-      const response = `I found ${propertiesWithinDistance.length} properties within ${displayDistance} ${distanceUnit} of a ${amenityName} location:`;
+      const response = `I found ${propertiesWithinDistance.length} properties that are ${operator} ${displayDistance} ${distanceUnit} of a ${amenityName} location:`;
       addBotResponse(response);
       
-      const filteredProperties = propertiesWithinDistance.map(item => item.property);
-      onFilterProperties(filteredProperties, amenityType);
+      const propertiesToShow = propertiesWithinDistance.map(item => item.property);
       
-      handlePropertySelection(propertiesWithinDistance[0].property);
+      onFilterProperties(propertiesToShow, amenityType);
       
-      if (propertiesWithinDistance[0].amenity) {
-        const additionalInfo = `This property is approximately ${(propertiesWithinDistance[0].distance * 0.621371).toFixed(2)} miles from ${propertiesWithinDistance[0].amenity.name} at ${propertiesWithinDistance[0].amenity.address}.`;
-        addBotResponse(additionalInfo);
+      if (propertiesWithinDistance.length > 0) {
+        handlePropertySelection(propertiesWithinDistance[0].property);
         
-        if (propertiesWithinDistance.length > 1) {
-          const moreInfo = `There are ${propertiesWithinDistance.length - 1} more properties within your specified distance. Would you like to see the next one?`;
-          addBotResponse(moreInfo);
+        if (propertiesWithinDistance[0].amenity) {
+          const additionalInfo = `This property is approximately ${(propertiesWithinDistance[0].distance * 0.621371).toFixed(2)} miles from ${propertiesWithinDistance[0].amenity.name} at ${propertiesWithinDistance[0].amenity.address}.`;
+          addBotResponse(additionalInfo);
+          
+          if (propertiesWithinDistance.length > 1) {
+            const moreInfo = `There are ${propertiesWithinDistance.length - 1} more properties ${operator} your specified distance. Would you like to see the next one?`;
+            addBotResponse(moreInfo);
+          }
         }
       }
     } else {
-      addBotResponse(`I couldn't find any properties within ${displayDistance} ${distanceKm === displayDistance ? 'km' : 'miles'} of a ${amenityName} location.`);
+      addBotResponse(`I couldn't find any properties that are ${operator} ${displayDistance} ${distanceKm === displayDistance ? 'km' : 'miles'} of a ${amenityName} location.`);
     }
   };
   

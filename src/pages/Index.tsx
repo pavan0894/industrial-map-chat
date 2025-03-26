@@ -15,14 +15,27 @@ const Index = () => {
     setSelectedProperty(property);
   };
   
-  const handleFilterProperties = (properties: Property[], amenityType?: 'fedex' | 'ups' | 'starbucks') => {
+  const handleFilterProperties = (
+    properties: Property[], 
+    amenityFilter?: 'fedex' | 'ups' | 'starbucks' | Array<{type: 'fedex' | 'ups' | 'starbucks', distance?: number, operator?: 'within' | 'at least'}>
+  ) => {
     setFilteredProperties(properties);
     
-    if (amenityType) {
-      const relevantAmenities = nearbyLocations.filter(loc => loc.type === amenityType);
-      setFilteredAmenities(relevantAmenities);
-    } else {
+    if (!amenityFilter) {
       setFilteredAmenities([]);
+      return;
+    }
+    
+    if (typeof amenityFilter === 'string') {
+      // Single amenity type filter
+      const relevantAmenities = nearbyLocations.filter(loc => loc.type === amenityFilter);
+      setFilteredAmenities(relevantAmenities);
+    } else if (Array.isArray(amenityFilter)) {
+      // Multiple amenity types
+      const amenityTypes = amenityFilter.map(a => a.type);
+      const uniqueTypes = [...new Set(amenityTypes)];
+      const relevantAmenities = nearbyLocations.filter(loc => uniqueTypes.includes(loc.type));
+      setFilteredAmenities(relevantAmenities);
     }
   };
   
