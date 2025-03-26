@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Property, properties } from '@/data/properties';
 import { NearbyLocation, nearbyLocations } from '@/data/nearbyLocations';
@@ -19,7 +18,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
-    // On mobile, switch to map view when property is selected
     setShowMobileChat(false);
   };
 
@@ -35,11 +33,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
     
     if (typeof amenityFilter === 'string') {
-      // Single amenity type filter
       const relevantAmenities = nearbyLocations.filter(loc => loc.type === amenityFilter);
       setFilteredAmenities(relevantAmenities);
     } else if (Array.isArray(amenityFilter)) {
-      // Multiple amenity types
       const amenityTypes = amenityFilter.map(a => a.type);
       const uniqueTypes = [...new Set(amenityTypes)];
       const relevantAmenities = nearbyLocations.filter(loc => uniqueTypes.includes(loc.type));
@@ -49,15 +45,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
       <header className="border-b bg-white dark:bg-gray-950 backdrop-blur-sm z-10">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <Building className="h-6 w-6 text-primary" />
-            <span className="font-semibold text-lg">Industrial Map Chat</span>
+            <span className="font-semibold text-lg">Survey Agent</span>
           </div>
           
-          {/* Mobile toggle buttons */}
           <div className="flex md:hidden">
             <Button 
               variant={showMobileChat ? "default" : "outline"} 
@@ -78,9 +72,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </header>
       
-      {/* Main content */}
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Chat interface (left side) */}
         <div 
           className={`
             flex flex-col w-full md:w-2/5 p-4
@@ -97,7 +89,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
         
-        {/* Map (right side) */}
         <div 
           className={`
             flex-1 p-4 relative
@@ -111,7 +102,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             amenities={filteredAmenities}
           />
           
-          {/* Selected property overlay */}
           {selectedProperty && (
             <div className="absolute top-8 left-8 right-8 glass-panel rounded-lg shadow-lg border p-4 z-10 max-w-md animate-fade-in">
               <div className="flex justify-between items-start mb-3">
