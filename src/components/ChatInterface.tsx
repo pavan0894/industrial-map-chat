@@ -98,20 +98,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const processUserQuery = (query: string) => {
     const lowerQuery = query.toLowerCase();
     
-    const multipleConditionsRegex = /(within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)(?:.+?)((?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks))/i;
-    const multiMatch = query.match(multipleConditionsRegex);
+    const multipleAmenityDistanceRegex = /(?:properties|properties\s+)(?:that are\s+|which are\s+|are\s+)?(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)(?:.+?)(?:and|&)\s+(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)/i;
+    const multipleAmenityMatch = query.match(multipleAmenityDistanceRegex);
     
-    if (multiMatch) {
-      const firstOperator = multiMatch[1].toLowerCase() as 'within' | 'at least';
-      const firstDistance = parseFloat(multiMatch[2]);
-      const firstUnit = multiMatch[3].toLowerCase().startsWith('mile') ? 'miles' : 'km';
-      const firstAmenityType = multiMatch[4].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+    if (multipleAmenityMatch) {
+      const firstDistance = parseFloat(multipleAmenityMatch[1]);
+      const firstUnit = multipleAmenityMatch[2].toLowerCase().startsWith('mile') ? 'miles' : 'km';
+      const firstAmenityType = multipleAmenityMatch[3].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+      const firstOperator = lowerQuery.includes('within') ? 'within' : 'at least';
       
-      const secondCondition = multiMatch[5];
-      const secondOperator = secondCondition.match(/(within|at least)/i)?.[0].toLowerCase() as 'within' | 'at least';
-      const secondDistance = parseFloat(multiMatch[6]);
-      const secondUnit = multiMatch[7].toLowerCase().startsWith('mile') ? 'miles' : 'km';
-      const secondAmenityType = multiMatch[8].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+      const secondDistance = parseFloat(multipleAmenityMatch[4]);
+      const secondUnit = multipleAmenityMatch[5].toLowerCase().startsWith('mile') ? 'miles' : 'km';
+      const secondAmenityType = multipleAmenityMatch[6].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+      const secondOperator = query.substring(query.indexOf(secondAmenityType) - 15, query.indexOf(secondAmenityType)).includes('within') ? 'within' : 'at least';
       
       const firstDistanceKm = firstUnit === 'miles' ? firstDistance * 1.60934 : firstDistance;
       const secondDistanceKm = secondUnit === 'miles' ? secondDistance * 1.60934 : secondDistance;
@@ -288,12 +287,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const sumA = conditions.reduce((sum, condition) => {
         const distances = a.amenityDistances[condition.type] || [];
         return sum + (distances[0]?.distance || 0);
-      }, 0);
+      }, 0) / conditions.length;
       
       const sumB = conditions.reduce((sum, condition) => {
         const distances = b.amenityDistances[condition.type] || [];
         return sum + (distances[0]?.distance || 0);
-      }, 0);
+      }, 0) / conditions.length;
       
       return sumA - sumB;
     });
@@ -306,8 +305,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const response = `I found ${filteredProperties.length} properties that are ${conditionsText}:`;
       addBotResponse(response);
       
-      const uniqueTypes = [...new Set(conditions.map(c => c.type))];
-      const amenitiesForMap = nearbyLocations.filter(loc => uniqueTypes.includes(loc.type));
+      const amenityTypesToShow = conditions.map(c => c.type);
+      const amenitiesForMap = nearbyLocations.filter(loc => amenityTypesToShow.includes(loc.type));
       
       const propertiesToShow = filteredProperties.map(item => item.property);
       
