@@ -97,32 +97,34 @@ const PropertyMarker: React.FC<PropertyMarkerProps> = ({ property, selected, onC
       {/* Google Maps-style pin */}
       <div 
         className={`
-          w-7 h-10
+          w-5 h-8
           flex flex-col
           relative
         `}
       >
         {/* Pin head */}
         <div 
-          className="w-7 h-7 rounded-full flex items-center justify-center text-white shadow-md"
+          className="w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md"
           style={{ backgroundColor: markerColor }}
         >
-          {getMarkerIcon()}
+          <div className="w-3 h-3">
+            {getMarkerIcon()}
+          </div>
         </div>
         
         {/* Pin tail/pointer */}
-        <div className="absolute top-[22px] left-0 right-0 mx-auto w-0 h-0" style={{
-          borderLeft: '7px solid transparent',
-          borderRight: '7px solid transparent',
-          borderTop: `14px solid ${markerColor}`,
+        <div className="absolute top-[16px] left-0 right-0 mx-auto w-0 h-0" style={{
+          borderLeft: '5px solid transparent',
+          borderRight: '5px solid transparent',
+          borderTop: `10px solid ${markerColor}`,
         }} />
       </div>
       
       {/* Shadow */}
       <div 
         className={`
-          absolute -bottom-1.5 
-          w-3 h-1 
+          absolute -bottom-1
+          w-2.5 h-0.5
           rounded-full 
           bg-black/30 
           blur-[1px]
@@ -141,16 +143,16 @@ const PropertyMarker: React.FC<PropertyMarkerProps> = ({ property, selected, onC
           }}
         >
           <div 
-            className="w-7 h-10 relative"
+            className="w-5 h-8 relative"
           >
             <div 
-              className="w-7 h-7 rounded-full"
+              className="w-5 h-5 rounded-full"
               style={{ backgroundColor: markerColor }}
             />
-            <div className="absolute top-[22px] left-0 right-0 mx-auto w-0 h-0" style={{
-              borderLeft: '7px solid transparent',
-              borderRight: '7px solid transparent',
-              borderTop: `14px solid ${markerColor}`,
+            <div className="absolute top-[16px] left-0 right-0 mx-auto w-0 h-0" style={{
+              borderLeft: '5px solid transparent',
+              borderRight: '5px solid transparent',
+              borderTop: `10px solid ${markerColor}`,
             }} />
           </div>
         </div>
