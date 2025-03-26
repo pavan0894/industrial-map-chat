@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Property, properties } from '@/data/properties';
+import { NearbyLocation, nearbyLocations } from '@/data/nearbyLocations';
 import MapComponent from './MapComponent';
 import ChatInterface from './ChatInterface';
 import PropertyCard from './PropertyCard';
@@ -15,11 +16,24 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(true);
+  const [filteredProperties, setFilteredProperties] = useState<Property[]>(properties);
+  const [filteredAmenities, setFilteredAmenities] = useState<NearbyLocation[]>([]);
   
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
     // On mobile, switch to map view when property is selected
     setShowMobileChat(false);
+  };
+
+  const handleFilterProperties = (properties: Property[], amenityType?: 'fedex' | 'ups' | 'starbucks') => {
+    setFilteredProperties(properties);
+    
+    if (amenityType) {
+      const relevantAmenities = nearbyLocations.filter(loc => loc.type === amenityType);
+      setFilteredAmenities(relevantAmenities);
+    } else {
+      setFilteredAmenities([]);
+    }
   };
 
   return (
@@ -67,6 +81,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               selectedProperty={selectedProperty} 
               onPropertySelect={handlePropertySelect}
               properties={properties}
+              onFilterProperties={handleFilterProperties}
             />
             
             {/* Property list */}
@@ -100,6 +115,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <MapComponent
             onPropertySelect={handlePropertySelect}
             selectedProperty={selectedProperty}
+            properties={filteredProperties}
+            amenities={filteredAmenities}
           />
           
           {/* Selected property overlay */}
