@@ -307,20 +307,32 @@ const MapComponent: React.FC<MapComponentProps> = ({
               <div className="text-xs font-medium mb-1 mt-2 pt-1.5 border-t border-gray-200 dark:border-gray-700">Nearby Services</div>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 flex items-center justify-center bg-white rounded-full">
-                    <div className="w-2 h-2" style={{ backgroundColor: '#7C2629' }} />
+                  <div className="w-4 h-4 flex items-center justify-center bg-white rounded-full overflow-hidden">
+                    <img 
+                      src="/lovable-uploads/5875062c-7a9e-4b53-8339-628c02b15898.png" 
+                      alt="UPS Logo" 
+                      className="w-3 h-3 object-contain"
+                    />
                   </div>
                   <span className="text-xs">UPS</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 flex items-center justify-center bg-white rounded-full">
-                    <div className="w-2 h-2" style={{ backgroundColor: '#4D148C' }} />
+                  <div className="w-4 h-4 flex items-center justify-center bg-white rounded-full overflow-hidden">
+                    <img 
+                      src="/lovable-uploads/b7a35cb6-a1ea-4464-a860-57bc13e364fd.png" 
+                      alt="FedEx Logo" 
+                      className="w-3 h-3 object-contain"
+                    />
                   </div>
                   <span className="text-xs">FedEx</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 flex items-center justify-center bg-white rounded-full">
-                    <div className="w-2 h-2" style={{ backgroundColor: '#066D38' }} />
+                  <div className="w-4 h-4 flex items-center justify-center bg-white rounded-full overflow-hidden">
+                    <img 
+                      src="/lovable-uploads/d6ffb390-ac82-4031-ac45-3fecd3d7cf47.png" 
+                      alt="Starbucks Logo" 
+                      className="w-3 h-3 object-contain"
+                    />
                   </div>
                   <span className="text-xs">Starbucks</span>
                 </div>
