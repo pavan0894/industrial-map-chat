@@ -134,6 +134,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       return;
     }
     
+    // Add regex for "within X miles of amenity1 or amenity2"
+    const orAmenityRegex = /(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)\s+(?:or|OR)\s+(fedex|ups|starbucks)/i;
+    const orAmenityMatch = query.match(orAmenityRegex);
+    
+    if (orAmenityMatch) {
+      const distance = parseFloat(orAmenityMatch[1]);
+      const unit = orAmenityMatch[2].toLowerCase().startsWith('mile') ? 'miles' : 'km';
+      const firstAmenityType = orAmenityMatch[3].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+      const secondAmenityType = orAmenityMatch[4].toLowerCase() as 'fedex' | 'ups' | 'starbucks';
+      const operator = lowerQuery.includes('within') ? 'within' : 'at least';
+      
+      const distanceInKm = unit === 'miles' ? distance * 1.60934 : distance;
+      
+      findPropertiesWithinDistanceOfEitherAmenity(
+        [firstAmenityType, secondAmenityType], 
+        distanceInKm, 
+        distance, 
+        operator
+      );
+      return;
+    }
+    
     const distanceRegex = /(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)/i;
     const distanceMatch = query.match(distanceRegex);
     
@@ -232,6 +254,108 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
     
     addBotResponse("I can help you find industrial properties in Dallas and information about nearby FedEx, UPS, and Starbucks locations. What specific information are you looking for?");
+  };
+
+  // New function to handle "properties within X miles of amenity1 or amenity2"
+  const findPropertiesWithinDistanceOfEitherAmenity = (
+    amenityTypes: ('fedex' | 'ups' | 'starbucks')[], 
+    distanceKm: number, 
+    displayDistance: number,
+    operator: 'within' | 'at least' = 'within'
+  ) => {
+    const amenities = nearbyLocations.filter(loc => amenityTypes.includes(loc.type));
+    if (!amenities.length) {
+      addBotResponse(`I couldn't find any ${amenityTypes.join(' or ')} locations in our database.`);
+      return;
+    }
+    
+    const propertiesWithDistance = properties.map(property => {
+      let closestDistances: Record<string, { distance: number, amenity: NearbyLocation | null }> = {};
+      
+      // Find closest amenity of each type for the property
+      amenityTypes.forEach(type => {
+        let closestDistance = Number.MAX_VALUE;
+        let closestAmenity: NearbyLocation | null = null;
+        
+        const amenitiesOfType = amenities.filter(a => a.type === type);
+        amenitiesOfType.forEach(amenity => {
+          const distance = calculateDistance(
+            property.coordinates[1], property.coordinates[0],
+            amenity.coordinates[1], amenity.coordinates[0]
+          );
+          
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestAmenity = amenity;
+          }
+        });
+        
+        closestDistances[type] = { distance: closestDistance, amenity: closestAmenity };
+      });
+      
+      // Find the minimum distance among all amenity types
+      let minDistance = Number.MAX_VALUE;
+      let closestAmenityType: string | null = null;
+      
+      Object.entries(closestDistances).forEach(([type, data]) => {
+        if (data.distance < minDistance) {
+          minDistance = data.distance;
+          closestAmenityType = type;
+        }
+      });
+      
+      return {
+        property,
+        minDistance,
+        closestAmenityType,
+        closestDistances
+      };
+    })
+    .filter(item => {
+      if (operator === 'within') {
+        return item.minDistance <= distanceKm;
+      } else { // at least
+        return item.minDistance >= distanceKm;
+      }
+    })
+    .sort((a, b) => a.minDistance - b.minDistance);
+    
+    const amenityTypeNames = amenityTypes.map(type => 
+      type === 'fedex' ? 'FedEx' : type === 'ups' ? 'UPS' : 'Starbucks'
+    );
+    
+    if (propertiesWithDistance.length > 0) {
+      const distanceUnit = distanceKm === displayDistance ? 'km' : 'miles';
+      const response = `I found ${propertiesWithDistance.length} properties that are ${operator} ${displayDistance} ${distanceUnit} of either ${amenityTypeNames.join(' or ')}:`;
+      addBotResponse(response);
+      
+      const propertiesToShow = propertiesWithDistance.map(item => item.property);
+      
+      // Show both types of amenities on the map
+      const amenitiesForMap = nearbyLocations.filter(loc => amenityTypes.includes(loc.type));
+      onFilterProperties(propertiesToShow, amenitiesForMap);
+      
+      if (propertiesWithDistance.length > 0) {
+        handlePropertySelection(propertiesWithDistance[0].property);
+        
+        if (propertiesWithDistance[0].closestAmenityType) {
+          const closestType = propertiesWithDistance[0].closestAmenityType;
+          const closestData = propertiesWithDistance[0].closestDistances[closestType];
+          
+          if (closestData && closestData.amenity) {
+            const additionalInfo = `This property is approximately ${(closestData.distance * 0.621371).toFixed(2)} miles from ${closestData.amenity.name} (${closestType.toUpperCase()}) at ${closestData.amenity.address}.`;
+            addBotResponse(additionalInfo);
+            
+            if (propertiesWithDistance.length > 1) {
+              const moreInfo = `There are ${propertiesWithDistance.length - 1} more properties ${operator} your specified distance. Would you like to see the next one?`;
+              addBotResponse(moreInfo);
+            }
+          }
+        }
+      }
+    } else {
+      addBotResponse(`I couldn't find any properties that are ${operator} ${displayDistance} ${distanceKm === displayDistance ? 'km' : 'miles'} of either ${amenityTypeNames.join(' or ')}.`);
+    }
   };
   
   const findPropertiesWithMultipleAmenityConditions = (
@@ -614,24 +738,3 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           )}
           
           <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
-      
-      <form onSubmit={handleUserInput} className="p-4 border-t bg-background dark:bg-gray-900">
-        <div className="flex space-x-2">
-          <Input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask about industrial properties..."
-            className="flex-1"
-          />
-          <Button type="submit" size="icon">
-            <Send size={18} />
-          </Button>
-        </div>
-      </form>
-    </div>
-  );
-};
-
-export default ChatInterface;
