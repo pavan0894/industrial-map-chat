@@ -134,7 +134,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       return;
     }
     
-    // Add regex for "within X miles of amenity1 or amenity2"
     const orAmenityRegex = /(?:within|at least)\s+(\d+(?:\.\d+)?)\s*(miles?|km|kilometers?)\s+(?:of|from|to)\s+(fedex|ups|starbucks)\s+(?:or|OR)\s+(fedex|ups|starbucks)/i;
     const orAmenityMatch = query.match(orAmenityRegex);
     
@@ -256,7 +255,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     addBotResponse("I can help you find industrial properties in Dallas and information about nearby FedEx, UPS, and Starbucks locations. What specific information are you looking for?");
   };
 
-  // New function to handle "properties within X miles of amenity1 or amenity2"
   const findPropertiesWithinDistanceOfEitherAmenity = (
     amenityTypes: ('fedex' | 'ups' | 'starbucks')[], 
     distanceKm: number, 
@@ -272,7 +270,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     const propertiesWithDistance = properties.map(property => {
       let closestDistances: Record<string, { distance: number, amenity: NearbyLocation | null }> = {};
       
-      // Find closest amenity of each type for the property
       amenityTypes.forEach(type => {
         let closestDistance = Number.MAX_VALUE;
         let closestAmenity: NearbyLocation | null = null;
@@ -293,7 +290,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         closestDistances[type] = { distance: closestDistance, amenity: closestAmenity };
       });
       
-      // Find the minimum distance among all amenity types
       let minDistance = Number.MAX_VALUE;
       let closestAmenityType: string | null = null;
       
@@ -331,7 +327,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       const propertiesToShow = propertiesWithDistance.map(item => item.property);
       
-      // Show both types of amenities on the map
       const amenitiesForMap = nearbyLocations.filter(loc => amenityTypes.includes(loc.type));
       onFilterProperties(propertiesToShow, amenitiesForMap);
       
@@ -738,3 +733,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           )}
           
           <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
+      
+      <form onSubmit={handleUserInput} className="p-3 border-t bg-white dark:bg-gray-900">
+        <div className="flex gap-2">
+          <Input
+            placeholder="Type a message..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            className="flex-1"
+          />
+          <Button type="submit" size="icon">
+            <Send size={18} />
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default ChatInterface;
